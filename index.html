@@ -259,6 +259,156 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/11/15/DESC/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Cookie">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Cookie&Cat">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2019/11/15/DESC/" itemprop="url">DESC深度自适应聚类</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-11-15T14:57:15+08:00">
+                2019-11-15
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <h1 id="深度自适应聚类"><a href="#深度自适应聚类" class="headerlink" title="深度自适应聚类"></a>深度自适应聚类</h1><h3 id="Intro"><a href="#Intro" class="headerlink" title="Intro"></a>Intro</h3><p>传统的聚类方法通常聚焦于两个问题：</p>
+<ol>
+<li>如何选择正确的距离度量去衡量样本之间的相似度</li>
+<li>如何定义正确的聚类模式去描述数据的特征</li>
+</ol>
+<p>对于第一部分，距离度量通常取决于数据的特征空间，这一部分的方法通常是无监督的。早期的方法通常是定义特征描述算子，比如针对图像的HOG、SIFT算子。然而这些传统方法通常没有很强的适应性，难以区分物体和背景。为了克服这一问题，近期许多深度无监督学习的方法被提出，比如自编码器，去噪自编码器等。这些方法通过对数据中潜在的模式进行自编码，用重构的方式训练整个模型。尽管这种方法已经取得了很好的效果，可是在表示高位特征的数据时还有很大的提升也能够空间。</p>
+<p>对于第二部分，传统方法通过不同的可理解的模式对数据进行描述。基于这个思想，高斯混合分布是一个常用的描述方法。同时，K-means、K-means++、DBSCAN也是常用的聚类模式。这些模式在不同的数据集上都取得过很好的效果，但是没有一种模式可以做到对不同数据的适应性。</p>
+<p>于是，大部分聚类方法都是基于这两个问题进行设计的，其聚类过程也通常是两阶段的。这就造成了一个问题，那就是在衡量相似度的过程不能很好第适应聚类过程，而聚类的时候也不能继续改进相似度的衡量。</p>
+<p>为了同时进行对数据的高维特征学习和聚类运算，本文提出了一种深度自适应聚类方法。这种方法通过把聚类问题转换成两两样本之间的二分类问题，首先，模型会将每个样本编码成一个k维的概率分布向量(和为1)，通过自适应的训练过程，让模型逐渐学会区分两个样本是否属于同一个聚类，最终，每个样本对应的分布向量就是它的类标信息。</p>
+<h3 id="Model"><a href="#Model" class="headerlink" title="Model"></a>Model</h3><p><img src="/image/1-8e657144-5b37-47f5-ac1b-58d3c3b4dc60.png" alt></p>
+<p>第一部分，深度特征提取。将每个样本输入到共享参数的一个深度神经网络模型中，通过卷积、池化等操作，最终将样本输出为一个k维的特征向量，这个向量的意义是这个样本属于每一个聚类的概率。在训练开始阶段，这个特征向量的各维的值都较为平均，随着训练的进行，这个特征向量会逐渐逼近一个one-hot向量，即我们最终要求的类别信息。为了便于计算，通常我们要给I向量一个约束，本文中用的是P范式约束。</p>
+<p>$$数据集：D={(x_i,x_j,r_{ij})}_{i=1,j=1}^n$$</p>
+<p>$$DNN模块：f(x_i;w)=I_i$$</p>
+<p>$$I向量满足约束C_p：||I||_p=1$$</p>
+<p>第二部分，将样本两两输入到共享参数的DNN模型中，得到两个分布向量，通过内积的方法确定两个向量的相似度，根据相似度的大小和阈值的关系，确定这对样本的标签rij（1表示在同一个聚类，0表示不在同一个聚类）</p>
+<p>$$比较模块：g(x_i,x_j;w)=S(I_i,I_j)=I_i\cdot I_j=f(x_i;w)\cdot f(x_j;w)$$</p>
+<p>$$r_{ij}的确定：r_{ij}=\left{\begin{matrix} 1, &amp; S(I_i,I_j)&gt;u\  0, &amp; S(I_i,I_j)&lt;l\  None, &amp; otherwise \end{matrix}\right.$$</p>
+<p>第三部分，将样本两两输入模型得到的相似度和标签做比较，计算误差，通过反向传播修改DNN的参数。</p>
+<p>$$指标系数：v_{ij}=\begin{cases} 1, &amp; r_{ij}=0,1 \ 0 ,&amp; r_{ij}=None\end{cases}$$</p>
+<p>$$损失函数：E(w)=\sum_{i=1}^n\sum_{j=1}^nv_{ij}L(r_{ij},g(x_i,x_j;w))=\sum_{i=1}^n\sum_{j=1}^nv_{ij}|r_{ij}-g(x_i,x_j;w)|^2$$</p>
+<h3 id="Flow"><a href="#Flow" class="headerlink" title="Flow"></a>Flow</h3><pre><code>训练过程流程图
+</code></pre><p><img src="/image/-facf62fb-c310-4039-964e-c85e19481afa.png" alt></p>
+<h3 id="Experiment"><a href="#Experiment" class="headerlink" title="Experiment"></a>Experiment</h3><p><img src="/image/2-19aec3cb-f44b-4902-9dc1-14d49b8daa75.png" alt></p>
+<p>可以看到在大部分数据集上，该方法相比传统的方法有着明显的提高，并且该方法在不同类型的数据集（图像、语音、文本）上都取得了较高的准确率。</p>
+<p><img src="/image/3-58482eab-4a16-42ab-90f5-a2907a838271.png" alt></p>
+<p>论文中展示了随着训练轮数的增加，不同类别的样本的特征向量的分布情况。可以看到当训练结束后，在特征空间中很好地将样本进行了划分。</p>
+<h3 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h3><p>这篇论文提出了一个很好的基于深度学习的聚类模式，将聚类问题转化成特征提取和样本对的二分类问题的结合，很好地将深度学习的优势融入到了聚类当中。然而，该文章中的模型尚存在以下几个问题：</p>
+<ol>
+<li>参数的初始化以及初始几次计算样本的选取对模型的参数影响很大，如果这部分的初始化没做好，整个模型的效果将大打折扣。所以需要一种稳定性更强的计算方法。</li>
+<li>由于需要对样本进行两两比较，那么遍历全量的样本对空间所需的时间复杂度将大大提升，如何减小计算复杂度是另一个需要考虑的问题。</li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/11/15/Round-G-2019-Kick-Start-2019/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -346,156 +496,6 @@
 </blockquote>
 <p>由于枚举所有方案需要$3^{20}$次计算，肯定是不行的。所以我们考虑先枚举A的工作方案，然后再看B有多少可行的工作方案与之对应。<br>我们设1为工作，0为不工作，那么假设B的一个可行方案是$\hat s=00101$，那么它可以对应的最小的A的方案$s$应该是$11010$，并且它可以对应任何$11010$的超集，比如$11110$,$11011$等。我们设$f[s]$表示A的方案为$s$时对应多少可行的B的方案。那么对于每个$s$来说，我们先检查它对应的最小的B方案$\hat s$是否可行，如果可行，就用$s$去更新所有$s$的超集。这里为了避免重复更新，我们可以限制更新路径为从低位到高位增加，也就是先枚举位，在枚举这将这一位变成1的转移。<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;bits/stdc++.h&gt;</span></span></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> <span class="built_in">std</span>;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> maxn 1200200</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="keyword">long</span> <span class="keyword">long</span> LL;</span><br><span class="line"><span class="keyword">int</span> n;</span><br><span class="line">LL h;</span><br><span class="line">LL a[maxn], b[maxn];</span><br><span class="line">LL f[maxn];</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">judge</span><span class="params">(<span class="keyword">int</span> x, LL *t)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    LL tmp = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; n; i++)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">if</span> ((x &gt;&gt; i) &amp; <span class="number">1</span>)</span><br><span class="line">            tmp += t[i];</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> tmp &gt;= h;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> Case;</span><br><span class="line">    <span class="built_in">cin</span> &gt;&gt; Case;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> o = <span class="number">1</span>; o &lt;= Case; o++)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">cin</span> &gt;&gt; n &gt;&gt; h;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; n; i++)</span><br><span class="line">            <span class="built_in">cin</span> &gt;&gt; a[i];</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; n; i++)</span><br><span class="line">            <span class="built_in">cin</span> &gt;&gt; b[i];</span><br><span class="line">        <span class="keyword">int</span> max_state = (<span class="number">1</span> &lt;&lt; n) - <span class="number">1</span>;</span><br><span class="line">        <span class="built_in">memset</span>(f, <span class="number">0</span>, <span class="keyword">sizeof</span>(f));</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> x = <span class="number">0</span>; x &lt;= max_state; x++)</span><br><span class="line">            <span class="keyword">if</span> (judge(max_state ^ x, b))</span><br><span class="line">                f[x] = <span class="number">1</span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; n; i++)</span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">int</span> x = <span class="number">0</span>; x &lt;= max_state; x++)</span><br><span class="line">                <span class="keyword">if</span> ((x &gt;&gt; i) &amp; <span class="number">1</span>)</span><br><span class="line">                    f[x] += f[x ^ (<span class="number">1</span> &lt;&lt; i)];</span><br><span class="line">        LL ans = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> x = <span class="number">0</span>; x &lt;= max_state; x++)</span><br><span class="line">            <span class="keyword">if</span> (judge(x, a))</span><br><span class="line">                ans += f[x];</span><br><span class="line"></span><br><span class="line">        <span class="built_in">cout</span> &lt;&lt; <span class="string">"Case #"</span> &lt;&lt; o &lt;&lt; <span class="string">": "</span> &lt;&lt; ans &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure></p>
 <p>官方题解给的答案是将原序列分成两半，计算两边分别能组成的幸福度序列$&lt;S_a, S_b&gt;$，$ &lt;T_a, T_b&gt;$然后求答案时，等价于对每个$ &lt;T_a, T_b&gt;$，查找有多少个$&lt;S_a, S_b&gt;$满足$h-S_a\leq T_a$ 且 $h-S_b\leq T_b$，等价于在一个二维平面上查找一个点的左下角的点的个数。二维偏序问题，排序+树状数组即可。<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;bits/stdc++.h&gt;</span></span></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> <span class="built_in">std</span>;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> maxn 60006</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="keyword">long</span> <span class="keyword">long</span> LL;</span><br><span class="line"><span class="keyword">typedef</span> pair&lt;LL, LL&gt; pll;</span><br><span class="line"><span class="keyword">int</span> n, m, p;</span><br><span class="line">LL h;</span><br><span class="line"><span class="keyword">int</span> a[maxn], b[maxn], A[maxn], B[maxn];</span><br><span class="line"><span class="built_in">vector</span>&lt;pll&gt; s, t;</span><br><span class="line"><span class="built_in">map</span>&lt;LL, <span class="keyword">int</span>&gt; idx;</span><br><span class="line"><span class="built_in">vector</span>&lt;LL&gt; val;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">bit</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    LL sum[maxn &lt;&lt; <span class="number">2</span>];</span><br><span class="line">    <span class="keyword">int</span> num;</span><br><span class="line">    bit()</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">memset</span>(sum, <span class="number">0</span>, <span class="keyword">sizeof</span>(sum));</span><br><span class="line">    &#125;</span><br><span class="line">    bit(<span class="keyword">int</span> n) : num(n)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">memset</span>(sum, <span class="number">0</span>, <span class="keyword">sizeof</span>(sum));</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">add</span><span class="params">(<span class="keyword">int</span> x, LL z)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = x; i &lt;= num; i += (i &amp; -i))</span><br><span class="line">            sum[i] += z;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function">LL <span class="title">ask</span><span class="params">(<span class="keyword">int</span> x)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        LL tmp = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = x; i &gt;= <span class="number">1</span>; i -= (i &amp; -i))</span><br><span class="line">            tmp += sum[i];</span><br><span class="line">        <span class="keyword">return</span> tmp;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">clear</span><span class="params">()</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="built_in">memset</span>(sum, <span class="number">0</span>, <span class="keyword">sizeof</span>(sum));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">dfs1</span><span class="params">(<span class="keyword">int</span> k, LL x, LL y)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (k &gt; m)</span><br><span class="line">    &#123;</span><br><span class="line">        s.emplace_back(h - x, h - y);</span><br><span class="line">        val.push_back(h - x);</span><br><span class="line">        val.push_back(h - y);</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    dfs1(k + <span class="number">1</span>, x + a[k], y);</span><br><span class="line">    dfs1(k + <span class="number">1</span>, x, y + b[k]);</span><br><span class="line">    dfs1(k + <span class="number">1</span>, x + a[k], y + b[k]);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">dfs2</span><span class="params">(<span class="keyword">int</span> k, LL x, LL y)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (k &gt; p)</span><br><span class="line">    &#123;</span><br><span class="line">        t.emplace_back(x, y);</span><br><span class="line">        val.push_back(x);</span><br><span class="line">        val.push_back(y);</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    dfs2(k + <span class="number">1</span>, x + A[k], y);</span><br><span class="line">    dfs2(k + <span class="number">1</span>, x, y + B[k]);</span><br><span class="line">    dfs2(k + <span class="number">1</span>, x + A[k], y + B[k]);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> Case;</span><br><span class="line">    <span class="built_in">cin</span> &gt;&gt; Case;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> o = <span class="number">1</span>; o &lt;= Case; o++)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">cin</span> &gt;&gt; n &gt;&gt; h;</span><br><span class="line">        m = n / <span class="number">2</span>;</span><br><span class="line">        p = n - m;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">1</span>; i &lt;= m; i++)</span><br><span class="line">            <span class="built_in">cin</span> &gt;&gt; a[i];</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">1</span>; i &lt;= p; i++)</span><br><span class="line">            <span class="built_in">cin</span> &gt;&gt; A[i];</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">1</span>; i &lt;= m; i++)</span><br><span class="line">            <span class="built_in">cin</span> &gt;&gt; b[i];</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">1</span>; i &lt;= p; i++)</span><br><span class="line">            <span class="built_in">cin</span> &gt;&gt; B[i];</span><br><span class="line">        s.clear();</span><br><span class="line">        t.clear();</span><br><span class="line">        val.clear();</span><br><span class="line">        idx.clear();</span><br><span class="line">        dfs1(<span class="number">1</span>, <span class="number">0</span>, <span class="number">0</span>);</span><br><span class="line">        dfs2(<span class="number">1</span>, <span class="number">0</span>, <span class="number">0</span>);</span><br><span class="line">        sort(s.begin(), s.end());</span><br><span class="line">        sort(t.begin(), t.end());</span><br><span class="line">        sort(val.begin(), val.end());</span><br><span class="line">        <span class="keyword">auto</span> it = unique(val.begin(), val.end());</span><br><span class="line">        val.erase(it, val.end());</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; val.size(); i++)</span><br><span class="line">            idx[val[i]] = i + <span class="number">1</span>;</span><br><span class="line">        <span class="keyword">int</span> j = <span class="number">0</span>;</span><br><span class="line">        LL ans = <span class="number">0</span>;</span><br><span class="line">        <span class="function">bit <span class="title">tree</span><span class="params">(val.size() + <span class="number">3</span>)</span></span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; t.size(); i++)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">while</span> (j &lt; s.size() &amp;&amp; s[j].first &lt;= t[i].first)</span><br><span class="line">            &#123;</span><br><span class="line">                tree.add(idx[s[j].second], <span class="number">1</span>);</span><br><span class="line">                j += <span class="number">1</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            ans += tree.ask(idx[t[i].second]);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="built_in">cout</span> &lt;&lt; <span class="string">"Case #"</span> &lt;&lt; o &lt;&lt; <span class="string">": "</span> &lt;&lt; ans &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/11/15/DESC/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Cookie">
-      <meta itemprop="description" content>
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Cookie&Cat">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2019/11/15/DESC/" itemprop="url">DESC深度自适应聚类</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-11-15T14:57:15+08:00">
-                2019-11-15
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <h1 id="深度自适应聚类"><a href="#深度自适应聚类" class="headerlink" title="深度自适应聚类"></a>深度自适应聚类</h1><h3 id="Intro"><a href="#Intro" class="headerlink" title="Intro"></a>Intro</h3><p>传统的聚类方法通常聚焦于两个问题：</p>
-<ol>
-<li>如何选择正确的距离度量去衡量样本之间的相似度</li>
-<li>如何定义正确的聚类模式去描述数据的特征</li>
-</ol>
-<p>对于第一部分，距离度量通常取决于数据的特征空间，这一部分的方法通常是无监督的。早期的方法通常是定义特征描述算子，比如针对图像的HOG、SIFT算子。然而这些传统方法通常没有很强的适应性，难以区分物体和背景。为了克服这一问题，近期许多深度无监督学习的方法被提出，比如自编码器，去噪自编码器等。这些方法通过对数据中潜在的模式进行自编码，用重构的方式训练整个模型。尽管这种方法已经取得了很好的效果，可是在表示高位特征的数据时还有很大的提升也能够空间。</p>
-<p>对于第二部分，传统方法通过不同的可理解的模式对数据进行描述。基于这个思想，高斯混合分布是一个常用的描述方法。同时，K-means、K-means++、DBSCAN也是常用的聚类模式。这些模式在不同的数据集上都取得过很好的效果，但是没有一种模式可以做到对不同数据的适应性。</p>
-<p>于是，大部分聚类方法都是基于这两个问题进行设计的，其聚类过程也通常是两阶段的。这就造成了一个问题，那就是在衡量相似度的过程不能很好第适应聚类过程，而聚类的时候也不能继续改进相似度的衡量。</p>
-<p>为了同时进行对数据的高维特征学习和聚类运算，本文提出了一种深度自适应聚类方法。这种方法通过把聚类问题转换成两两样本之间的二分类问题，首先，模型会将每个样本编码成一个k维的概率分布向量(和为1)，通过自适应的训练过程，让模型逐渐学会区分两个样本是否属于同一个聚类，最终，每个样本对应的分布向量就是它的类标信息。</p>
-<h3 id="Model"><a href="#Model" class="headerlink" title="Model"></a>Model</h3><p><img src="1-8e657144-5b37-47f5-ac1b-58d3c3b4dc60.png" alt></p>
-<p>第一部分，深度特征提取。将每个样本输入到共享参数的一个深度神经网络模型中，通过卷积、池化等操作，最终将样本输出为一个k维的特征向量，这个向量的意义是这个样本属于每一个聚类的概率。在训练开始阶段，这个特征向量的各维的值都较为平均，随着训练的进行，这个特征向量会逐渐逼近一个one-hot向量，即我们最终要求的类别信息。为了便于计算，通常我们要给I向量一个约束，本文中用的是P范式约束。</p>
-<p>$$数据集：D={(x_i,x_j,r_{ij})}_{i=1,j=1}^n$$</p>
-<p>$$DNN模块：f(x_i;w)=I_i$$</p>
-<p>$$I向量满足约束C_p：||I||_p=1$$</p>
-<p>第二部分，将样本两两输入到共享参数的DNN模型中，得到两个分布向量，通过内积的方法确定两个向量的相似度，根据相似度的大小和阈值的关系，确定这对样本的标签rij（1表示在同一个聚类，0表示不在同一个聚类）</p>
-<p>$$比较模块：g(x_i,x_j;w)=S(I_i,I_j)=I_i\cdot I_j=f(x_i;w)\cdot f(x_j;w)$$</p>
-<p>$$r_{ij}的确定：r_{ij}=\left{\begin{matrix} 1, &amp; S(I_i,I_j)&gt;u\  0, &amp; S(I_i,I_j)&lt;l\  None, &amp; otherwise \end{matrix}\right.$$</p>
-<p>第三部分，将样本两两输入模型得到的相似度和标签做比较，计算误差，通过反向传播修改DNN的参数。</p>
-<p>$$指标系数：v_{ij}=\begin{cases} 1, &amp; r_{ij}=0,1 \ 0 ,&amp; r_{ij}=None\end{cases}$$</p>
-<p>$$损失函数：E(w)=\sum_{i=1}^n\sum_{j=1}^nv_{ij}L(r_{ij},g(x_i,x_j;w))=\sum_{i=1}^n\sum_{j=1}^nv_{ij}|r_{ij}-g(x_i,x_j;w)|^2$$</p>
-<h3 id="Flow"><a href="#Flow" class="headerlink" title="Flow"></a>Flow</h3><pre><code>训练过程流程图
-</code></pre><p><img src="-facf62fb-c310-4039-964e-c85e19481afa.png" alt></p>
-<h3 id="Experiment"><a href="#Experiment" class="headerlink" title="Experiment"></a>Experiment</h3><p><img src="2-19aec3cb-f44b-4902-9dc1-14d49b8daa75.png" alt></p>
-<p>可以看到在大部分数据集上，该方法相比传统的方法有着明显的提高，并且该方法在不同类型的数据集（图像、语音、文本）上都取得了较高的准确率。</p>
-<p><img src="3-58482eab-4a16-42ab-90f5-a2907a838271.png" alt></p>
-<p>论文中展示了随着训练轮数的增加，不同类别的样本的特征向量的分布情况。可以看到当训练结束后，在特征空间中很好地将样本进行了划分。</p>
-<h3 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h3><p>这篇论文提出了一个很好的基于深度学习的聚类模式，将聚类问题转化成特征提取和样本对的二分类问题的结合，很好地将深度学习的优势融入到了聚类当中。然而，该文章中的模型尚存在以下几个问题：</p>
-<ol>
-<li>参数的初始化以及初始几次计算样本的选取对模型的参数影响很大，如果这部分的初始化没做好，整个模型的效果将大打折扣。所以需要一种稳定性更强的计算方法。</li>
-<li>由于需要对样本进行两两比较，那么遍历全量的样本对空间所需的时间复杂度将大大提升，如何减小计算复杂度是另一个需要考虑的问题。</li>
-</ol>
 
           
         
